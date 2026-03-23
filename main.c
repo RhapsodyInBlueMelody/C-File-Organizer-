@@ -6,57 +6,81 @@
 #include <sys/types.h>
 
 #define SIZE 1024
+#define RESET "\033[0m"
+#define BOLD "\033[1m"
+#define PINK "\033[95m"
+#define CYAN "\033[96m"
+#define YELLOW "\033[93m"
+#define GREEN "\033[92m"
+#define RED "\033[91m"
+#define DIM "\033[2m"
 
-DIR *dir;
-struct dirent *entry;
+void make_directory(char *folder_name) {
+  struct stat st;
 
-// string checker for extension of the files
-bool check_extension(const char *name, const char *ext) {
-  size_t nl = strlen(name), el = strlen(ext);
-  return nl >= el && !strcmp(name + nl - el, ext);
-}
-
-void make_directory(char *ext[], size_t arr_length) {
-  for (int i = 0; i < arr_length; i++) {
-    mkdir(ext[i] + 1, 0755);
+  if (stat(folder_name, &st) == -1) {
+    mkdir(folder_name, 0755);
+  } else {
+    printf(YELLOW "  (=^.^=) " RESET "folder already exists: " BOLD "%s" RESET
+                  " — no worries~\n",
+           folder_name);
   }
 }
 
-void move_files(DIR *dir, char *ext[], size_t arr_length, char *new_path) {
+void move_files(DIR *dir, char *new_path) {
+  struct dirent *entry;
+  int count = 0;
+
+  printf(PINK BOLD "\n  /\\_/\\\n" RESET);
+  printf(PINK BOLD " ( o.o )  purrring through your files...\n" RESET);
+  printf(PINK BOLD "  > ^ <\n\n" RESET);
+
   while ((entry = readdir(dir)) != NULL) {
     if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
       continue;
-    for (int i = 0; i < arr_length; i++) {
-      if (check_extension(entry->d_name, ext[i])) {
-        printf("Moving: %s → %s/%s\n", entry->d_name, ext[i] + 1,
-               entry->d_name);
-        snprintf(new_path, SIZE, "%s/%s", ext[i] + 1, entry->d_name);
-        rename(entry->d_name, new_path);
-        break;
+    char *extExtract = strrchr(entry->d_name, '.');
+    if (extExtract != NULL) {
+      make_directory(extExtract + 1);
+      snprintf(new_path, SIZE, "%s/%s", extExtract + 1, entry->d_name);
+      if (rename(entry->d_name, new_path) == -1) {
+        printf(RED "  (x_x) " RESET "oopsie! couldn't move " BOLD "%s" RESET
+                   " — %s\n",
+               entry->d_name, "rename failed");
+      } else {
+        count++;
+        printf(CYAN "  ~(=^‥^) " RESET GREEN "%s" RESET DIM
+                    " ──nyoom──► " RESET BOLD "%s/%s\n" RESET,
+               entry->d_name, extExtract + 1, entry->d_name);
       }
     }
+  }
+
+  printf(DIM "\n  ────────────────────────────────\n" RESET);
+  if (count == 0) {
+    printf(YELLOW "  (=-.-)zzZ  nothing to move, taking a nap...\n\n" RESET);
+  } else {
+    printf(GREEN BOLD "  (=^▿^=) done! " RESET "moved " BOLD "%d" RESET
+                      " file%s~ nya!\n\n",
+           count, count == 1 ? "" : "s");
   }
 }
 
 int main() {
+  DIR *dir;
+
+  printf(PINK "\n  ૮ ˶ᵔ ᵕ ᵔ˶ ა  kitty file sorter, starting up~\n\n" RESET);
+
   dir = opendir("./");
 
   if (dir == NULL) {
-    printf("File can't be open\n");
+    printf(RED "  (T_T) " RESET
+               "couldn't open the directory... *sad meow*\n\n");
     return 0;
   }
 
-  // read whole directory file names each and detect if the extension exist, and
-  // move individual name accordingly.
-  char *ext[] = {".exe", ".pdf", ".mp3", ".jpg", ".run",
-                 ".iso", ".mp4", ".deb", ".rpm"};
-  size_t length = 0;
   char new_path[SIZE];
-  length = sizeof(ext) / sizeof(ext[0]);
 
-  make_directory(ext, length);
-
-  move_files(dir, ext, length, new_path);
+  move_files(dir, new_path);
 
   closedir(dir);
 
